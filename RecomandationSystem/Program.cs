@@ -8,54 +8,54 @@ namespace RecomandationSystem {
     class Program {
         static void Main (string[] args) {
 
-            // // Create MLContext to be shared across the model creation workflow objects 
-            // // <SnippetMLContext>
-             MLContext mlContext = new MLContext ();
-            // // </SnippetMLContext>
+            // Create MLContext to be shared across the model creation workflow objects 
+            // <SnippetMLContext>
+            MLContext mlContext = new MLContext ();
+            // </SnippetMLContext>
 
-            // // Load data
-            // // <SnippetLoadDataMain>
-          //   (IDataView trainingDataView, IDataView testDataView) = LoadData (mlContext);
-            // // </SnippetLoadDataMain>
+            // Load data
+            // <SnippetLoadDataMain>
+            (IDataView trainingDataView, IDataView testDataView) = LoadData (mlContext);
+            // </SnippetLoadDataMain>
 
-            // // Build & train model
-            // // <SnippetBuildTrainModelMain>
-         //   ITransformer model = BuildAndTrainModel (mlContext, trainingDataView);
-            // // </SnippetBuildTrainModelMain>
+            // Build & train model
+            // <SnippetBuildTrainModelMain>
+            ITransformer model = BuildAndTrainModel (mlContext, trainingDataView);
+            // </SnippetBuildTrainModelMain>
 
-            // // Evaluate quality of model
-            // // <SnippetEvaluateModelMain>
-          //   EvaluateModel (mlContext, testDataView, model);
-            // // </SnippetEvaluateModelMain>
+            // Evaluate quality of model
+            // <SnippetEvaluateModelMain>
+            EvaluateModel (mlContext, testDataView, model);
+            // </SnippetEvaluateModelMain>
 
-            // // Use model to try a single prediction (one row of data)
-            // // <SnippetUseModelMain>
-            UseModelForSinglePrediction (mlContext);
-            // // </SnippetUseModelMain>
+            // Use model to try a single prediction (one row of data)
+            // <SnippetUseModelMain>
+            UseModelForSinglePrediction (mlContext, model);
+            // </SnippetUseModelMain>
 
-            // // Save model
-            // // <SnippetSaveModelMain>
-           //  SaveModel (mlContext, trainingDataView.Schema, model);
-            // // </SnippetSaveModelMain>
+            // Save model
+            // <SnippetSaveModelMain>
+            SaveModel (mlContext, trainingDataView.Schema, model);
+            // </SnippetSaveModelMain>
+
+            // Use model to try a single prediction (one row of data)
+            // <SnippetUseModelMain>
+            UseModelForSinglePredictionFromLocalModel (mlContext);
+            // </SnippetUseModelMain>
         }
 
         // Load data
         public static (IDataView training, IDataView test) LoadData (MLContext mlContext) {
+            // Load training & test datasets using datapaths
+            // <SnippetLoadData>
+            var trainingDataPath = Path.Combine (Environment.CurrentDirectory, "Data", "recommendation-ratings-train.csv");
+            var testDataPath = Path.Combine (Environment.CurrentDirectory, "Data", "recommendation-ratings-test.csv");
 
-            var DataPath = Path.Combine (Environment.CurrentDirectory, "Data", "ml25", "ratings.csv");
-            IDataView DataSourceView = mlContext.Data.LoadFromTextFile<MovieRating> (DataPath, hasHeader : true, separatorChar: ',');
-
-            var split = mlContext.Data.TrainTestSplit (DataSourceView, testFraction : 0.4);
-            var trainingData = mlContext.Data
-                .CreateEnumerable<MovieRating> (split.TrainSet, reuseRowObject : false);
-
-            var testData = mlContext.Data
-                .CreateEnumerable<MovieRating> (split.TestSet, reuseRowObject : false);
-
-            var trainingDataView = split.TrainSet; //mlContext.Data.LoadFromEnumerable (trainingData);
-            var testDataView = split.TestSet; // mlContext.Data.LoadFromEnumerable (testData);
+            IDataView trainingDataView = mlContext.Data.LoadFromTextFile<MovieRating> (trainingDataPath, hasHeader : true, separatorChar: ',');
+            IDataView testDataView = mlContext.Data.LoadFromTextFile<MovieRating> (testDataPath, hasHeader : true, separatorChar: ',');
 
             return (trainingDataView, testDataView);
+            // </SnippetLoadData>
         }
 
         // Build and train model
@@ -72,9 +72,8 @@ namespace RecomandationSystem {
                 MatrixColumnIndexColumnName = "userIdEncoded",
                 MatrixRowIndexColumnName = "movieIdEncoded",
                 LabelColumnName = "Label",
-                NumberOfIterations = 50,
-                ApproximationRank = 128,
-                Alpha = 0.6
+                NumberOfIterations = 20,
+                ApproximationRank = 100
             };
 
             var trainerEstimator = estimator.Append (mlContext.Recommendation ().Trainers.MatrixFactorization (options));
@@ -107,25 +106,55 @@ namespace RecomandationSystem {
         }
 
         // Use model for single prediction
-        public static void UseModelForSinglePrediction (MLContext mlContext) {//, ITransformer model
-            ITransformer trainedModel;
-            var ModelPath = Path.Combine (Environment.CurrentDirectory, "Data", "MovieRecommenderModel.zip");
-             trainedModel = mlContext.Model.Load (ModelPath, out var modelSchema);
+        public static void UseModelForSinglePrediction (MLContext mlContext, ITransformer model) {
+            // <SnippetPredictionEngine>
             Console.WriteLine ("=============== Making a prediction ===============");
-            // var predictionEngine = mlContext.Model.CreatePredictionEngine<MovieRating, MovieRatingPrediction> (model);
-            var predictionEngine = mlContext.Model.CreatePredictionEngine<MovieRating, MovieRatingPrediction> (trainedModel);
+            var predictionEngine = mlContext.Model.CreatePredictionEngine<MovieRating, MovieRatingPrediction> (model);
+            // </SnippetPredictionEngine>
+
+            // Create test input & make single prediction
+            // <SnippetMakeSinglePrediction>
             var testInput = new MovieRating { userId = 6, movieId = 10 };
 
             var movieRatingPrediction = predictionEngine.Predict (testInput);
+            // </SnippetMakeSinglePrediction>
 
+            // <SnippetPrintResults>
             if (Math.Round (movieRatingPrediction.Score, 1) > 3.5) {
                 Console.WriteLine ("Movie " + testInput.movieId + " is recommended for user " + testInput.userId);
             } else {
                 Console.WriteLine ("Movie " + testInput.movieId + " is not recommended for user " + testInput.userId);
             }
-
+            // </SnippetPrintResults>
         }
+        public static void UseModelForSinglePredictionFromLocalModel (MLContext mlContext) {
+            // <SnippetPredictionEngine>
+            Console.WriteLine ("=============== Making a prediction ===============");
+            //Define DataViewSchema for data preparation pipeline and trained model
+            var modelPath = Path.Combine (Environment.CurrentDirectory, "Data", "MovieRecommenderModel.zip");
 
+            DataViewSchema modelSchema;
+
+            // Load trained model
+            ITransformer trainedModel = mlContext.Model.Load (modelPath, out modelSchema);
+            var predictionEngine = mlContext.Model.CreatePredictionEngine<MovieRating, MovieRatingPrediction> (trainedModel);
+            // </SnippetPredictionEngine>
+
+            // Create test input & make single prediction
+            // <SnippetMakeSinglePrediction>
+            var testInput = new MovieRating { userId = 6, movieId = 55 };
+
+            var movieRatingPrediction = predictionEngine.Predict (testInput);
+            // </SnippetMakeSinglePrediction>
+
+            // <SnippetPrintResults>
+            if (Math.Round (movieRatingPrediction.Score, 1) > 3.5) {
+                Console.WriteLine ("Movie " + testInput.movieId + " is recommended for user " + testInput.userId);
+            } else {
+                Console.WriteLine ("Movie " + testInput.movieId + " is not recommended for user " + testInput.userId);
+            }
+            // </SnippetPrintResults>
+        }
         //Save model
         public static void SaveModel (MLContext mlContext, DataViewSchema trainingDataViewSchema, ITransformer model) {
             // Save the trained model to .zip file
@@ -136,15 +165,24 @@ namespace RecomandationSystem {
             mlContext.Model.Save (model, trainingDataViewSchema, modelPath);
             // </SnippetSaveModel>
         }
-
-        public static IEnumerable<MovieRating> GetTestMovieData (MLContext mlContext, IDataView testDataView) {
-
-            // Create an IEnumerable of HousingData objects from IDataView
-            IEnumerable<MovieRating> housingDataEnumerable =
-                mlContext.Data.CreateEnumerable<MovieRating> (testDataView, reuseRowObject : true);
-            return housingDataEnumerable;
-
-        }
     }
 
 }
+
+//  public static (IDataView training, IDataView test) LoadData (MLContext mlContext) {
+
+//             var DataPath = Path.Combine (Environment.CurrentDirectory, "Data", "ml25", "ratings.csv");
+//             IDataView DataSourceView = mlContext.Data.LoadFromTextFile<MovieRating> (DataPath, hasHeader : true, separatorChar: ',');
+
+//             var split = mlContext.Data.TrainTestSplit (DataSourceView, testFraction : 0.4);
+//             var trainingData = mlContext.Data
+//                 .CreateEnumerable<MovieRating> (split.TrainSet, reuseRowObject : false);
+
+//             var testData = mlContext.Data
+//                 .CreateEnumerable<MovieRating> (split.TestSet, reuseRowObject : false);
+
+//             var trainingDataView = split.TrainSet; //mlContext.Data.LoadFromEnumerable (trainingData);
+//             var testDataView = split.TestSet; // mlContext.Data.LoadFromEnumerable (testData);
+
+//             return (trainingDataView, testDataView);
+//         }
