@@ -1,0 +1,1 @@
+The MatrixFactorizationTrainer is your recommendation training algorithm. Matrix Factorization is a common approach to recommendation when you have data on how users have rated products in the past, which is the case for the datasets in this tutorial.
