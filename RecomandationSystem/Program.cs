@@ -82,9 +82,9 @@ namespace RecomandationSystem {
                 var movieRatingPrediction = predictionEngine.Predict (testInput);
 
                 if (Math.Round (movieRatingPrediction.Score, 1) > 3.5) {
-                    Console.WriteLine ("Movie " + testInput.movieId + " is recommended for user " + testInput.userId+" |||  Score=> "+ (movieRatingPrediction.Score));
+                    Console.WriteLine ("Movie " + testInput.movieId + " is recommended for user " + testInput.userId+" |||  Score=> "+ (movieRatingPrediction.Score.ToString()));
                 } else {
-                    Console.WriteLine ("Movie " + testInput.movieId + " is not recommended for user " + testInput.userId+" |||  Score=> "+ (movieRatingPrediction.Score));
+                    Console.WriteLine ("Movie " + testInput.movieId + " is not recommended for user " + testInput.userId+" |||  Score=> "+ (movieRatingPrediction.Score.ToString()));
                 }
             }
 
