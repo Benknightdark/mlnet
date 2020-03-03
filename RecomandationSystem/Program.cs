@@ -77,14 +77,14 @@ namespace RecomandationSystem {
             var predictionEngine = mlContext.Model.CreatePredictionEngine<MovieRating, MovieRatingPrediction> (trainedModel);
 
             foreach (var b in TestDataLis) {
-                var testInput = new MovieRating { userId = 6, movieId = b.movieId };
+                var testInput = new MovieRating { userId = 55, movieId = b.movieId };
 
                 var movieRatingPrediction = predictionEngine.Predict (testInput);
 
                 if (Math.Round (movieRatingPrediction.Score, 1) > 3.5) {
-                    Console.WriteLine ("Movie " + testInput.movieId + " is recommended for user " + testInput.userId+" |||  Score=> "+Math.Round (movieRatingPrediction.Score, 1));
+                    Console.WriteLine ("Movie " + testInput.movieId + " is recommended for user " + testInput.userId+" |||  Score=> "+ (movieRatingPrediction.Score));
                 } else {
-                    Console.WriteLine ("Movie " + testInput.movieId + " is not recommended for user " + testInput.userId+" |||  Score=> "+Math.Round (movieRatingPrediction.Score, 1));
+                    Console.WriteLine ("Movie " + testInput.movieId + " is not recommended for user " + testInput.userId+" |||  Score=> "+ (movieRatingPrediction.Score));
                 }
             }
 
