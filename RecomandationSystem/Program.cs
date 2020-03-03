@@ -17,8 +17,10 @@ namespace RecomandationSystem {
             EvaluateModel (mlContext, testDataView, model);
 
             SaveModel (mlContext, trainingDataView.Schema, model);
+            IEnumerable<MovieRating> TestDataList =
+                mlContext.Data.CreateEnumerable<MovieRating> (testDataView, reuseRowObject : true);
+            UseModelForSinglePredictionFromLocalModel (mlContext, TestDataList);
 
-            UseModelForSinglePredictionFromLocalModel (mlContext);
         }
 
         // Load data
@@ -59,13 +61,13 @@ namespace RecomandationSystem {
         public static void EvaluateModel (MLContext mlContext, IDataView testDataView, ITransformer model) {
             Console.WriteLine ("=============== Evaluating the model ===============");
             var prediction = model.Transform (testDataView);
-            var metrics = mlContext.Regression.Evaluate (prediction, labelColumnName: "Label", scoreColumnName: "Score");         
+            var metrics = mlContext.Regression.Evaluate (prediction, labelColumnName: "Label", scoreColumnName: "Score");
             Console.WriteLine ("Root Mean Squared Error : " + metrics.RootMeanSquaredError.ToString ());
+            Console.WriteLine ("MAE : " + metrics.MeanAbsoluteError.ToString ());
             Console.WriteLine ("RSquared: " + metrics.RSquared.ToString ());
         }
 
-
-        public static void UseModelForSinglePredictionFromLocalModel (MLContext mlContext) {
+        public static void UseModelForSinglePredictionFromLocalModel (MLContext mlContext, IEnumerable<MovieRating> TestDataLis) {
             Console.WriteLine ("=============== Making a prediction ===============");
             var modelPath = Path.Combine (Environment.CurrentDirectory, "Data", "MovieRecommenderModel.zip");
 
@@ -74,15 +76,18 @@ namespace RecomandationSystem {
             ITransformer trainedModel = mlContext.Model.Load (modelPath, out modelSchema);
             var predictionEngine = mlContext.Model.CreatePredictionEngine<MovieRating, MovieRatingPrediction> (trainedModel);
 
-            var testInput = new MovieRating { userId = 6, movieId = 55 };
+            foreach (var b in TestDataLis) {
+                var testInput = new MovieRating { userId = 6, movieId = b.movieId };
 
-            var movieRatingPrediction = predictionEngine.Predict (testInput);
+                var movieRatingPrediction = predictionEngine.Predict (testInput);
 
-            if (Math.Round (movieRatingPrediction.Score, 1) > 3.5) {
-                Console.WriteLine ("Movie " + testInput.movieId + " is recommended for user " + testInput.userId);
-            } else {
-                Console.WriteLine ("Movie " + testInput.movieId + " is not recommended for user " + testInput.userId);
+                if (Math.Round (movieRatingPrediction.Score, 1) > 3.5) {
+                    Console.WriteLine ("Movie " + testInput.movieId + " is recommended for user " + testInput.userId+" |||  Score=> "+Math.Round (movieRatingPrediction.Score, 1));
+                } else {
+                    Console.WriteLine ("Movie " + testInput.movieId + " is not recommended for user " + testInput.userId+" |||  Score=> "+Math.Round (movieRatingPrediction.Score, 1));
+                }
             }
+
         }
         //Save model
         public static void SaveModel (MLContext mlContext, DataViewSchema trainingDataViewSchema, ITransformer model) {
